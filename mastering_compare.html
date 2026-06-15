@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mastering Comparator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0e16; --bg2: #161c2c; --bg3: #1f273c; --bg4: #2a3551;
+    --text: #eef2fb; --text2: #99a5c4; --text3: #5c6886;
+    --border: rgba(255,255,255,0.06); --border2: rgba(255,255,255,0.14);
+    --blue: #4DD8F5; --blue-bg: rgba(77,216,245,0.14); --blue-text: #9CEBFB;
+    --teal: #FF6FA8; --teal-bg: rgba(255,111,168,0.14); --teal-text: #FFB9D4;
+    --red: #FF5C5C; --red-bg: rgba(255,92,92,0.14); --red-text: #FFB3B3;
+    --amber: #FFB454; --amber-bg: rgba(255,180,84,0.14); --amber-text: #FFD9A8;
+    --green: #4ADE9A; --green-bg: rgba(74,222,154,0.14); --green-text: #A8F5D2;
+    --radius: 10px; --radius-lg: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Exo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: radial-gradient(circle at 50% -10%, #1b2540 0%, #0b0e16 55%); color: var(--text); font-size: 15px; line-height: 1.6; min-height: 100vh; }
+  .app { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem; }
+  h1 { font-family: 'Exo 2', sans-serif; font-size: 46px; font-weight: 700; letter-spacing: .04em; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: var(--text2); margin-bottom: 2rem; }
+  .drop-zone { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 1.5rem; }
+  .drop-card { background: var(--bg2); border: 1.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 2rem 1.5rem; text-align: center; cursor: pointer; transition: border-color .2s, background .2s, box-shadow .2s; }
+  .drop-card:hover, .drop-card.dragover { border-color: var(--blue); background: var(--bg3); box-shadow: 0 0 24px rgba(77,216,245,0.12); }
+  .drop-card.loaded { border-style: solid; border-color: var(--blue); box-shadow: 0 0 24px rgba(77,216,245,0.15); }
+  .drop-card .icon { font-size: 32px; margin-bottom: .75rem; color: var(--text3); }
+  .drop-card.loaded .icon { color: var(--blue); }
+  .drop-card h3 { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
+  .drop-card p { font-size: 12px; color: var(--text2); }
+  .drop-card .file-info { font-size: 13px; font-weight: 500; color: var(--blue-text); background: var(--blue-bg); padding: 4px 10px; border-radius: var(--radius); display: inline-block; margin-top: .5rem; }
+  .drop-card .file-meta { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  input[type=file] { display: none; }
+  .analyze-btn { width: 100%; padding: .85rem; border-radius: 999px; border: 1px solid var(--border2); background: var(--bg2); color: var(--text); font-size: 15px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .2s, box-shadow .2s; }
+  .analyze-btn:hover:not(:disabled) { background: var(--bg3); box-shadow: 0 0 20px rgba(77,216,245,0.1); }
+  .analyze-btn:disabled { opacity: .4; cursor: default; }
+  .spinner { width: 14px; height: 14px; border: 2px solid var(--border2); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; display: none; }
+  .analyze-btn.loading .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .progress-text { text-align: center; font-size: 12px; color: var(--text3); margin-top: .5rem; min-height: 1.4em; }
+  .results { margin-top: 2rem; display: none; }
+  .results.show { display: block; }
+  .section { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset; }
+  .section-title { font-family: 'Exo 2', sans-serif; font-size: 15px; font-weight: 700; letter-spacing: .03em; color: var(--text); margin-bottom: 1.25rem; display: flex; align-items: center; gap: 10px; }
+  .section-title::before { content: ''; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--blue); box-shadow: 0 0 10px var(--blue); flex-shrink: 0; }
+  .metrics-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 1rem; }
+  .metric { background: var(--bg3); border-radius: var(--radius); padding: .75rem 1rem; }
+  .metric-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+  .metric-values { display: flex; gap: 8px; align-items: baseline; }
+  .metric-val { font-size: 18px; font-weight: 500; }
+  .metric-val.my { color: var(--blue); }
+  .metric-val.ref { color: var(--teal); }
+  .metric-sep { font-size: 12px; color: var(--text3); }
+  .metric-delta { font-size: 11px; padding: 1px 6px; border-radius: 3px; margin-left: 2px; }
+  .delta-ok   { background: var(--green-bg); color: var(--green-text); }
+  .delta-warn { background: var(--amber-bg); color: var(--amber-text); }
+  .delta-bad  { background: var(--red-bg);   color: var(--red-text); }
+  .bar-section { margin-bottom: .75rem; }
+  .bar-label-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+  .bar-label { font-size: 12px; color: var(--text2); }
+  .bar-vals { font-size: 11px; color: var(--text3); }
+  .bar-track { height: 8px; background: var(--bg3); border-radius: 4px; position: relative; overflow: hidden; }
+  .bar-my  { height: 100%; background: var(--blue); border-radius: 4px; opacity: .85; }
+  .bar-ref { height: 3px; position: absolute; top: 50%; transform: translateY(-50%); background: var(--teal); border-radius: 2px; }
+  .legend-row { display: flex; gap: 16px; margin-bottom: 1rem; font-size: 12px; color: var(--text2); }
+  .leg-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: middle; }
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+  .no-data { text-align: center; padding: 4rem; color: var(--text3); font-size: 14px; }
+  .track-names { display: flex; gap: 16px; margin-bottom: 1rem; font-size: 13px; }
+  .track-name { padding: 4px 10px; border-radius: var(--radius); font-size: 12px; font-weight: 500; }
+  .tn-my  { background: var(--blue-bg); color: var(--blue-text); }
+  .tn-ref { background: var(--teal-bg); color: var(--teal-text); }
+
+  .mixmatch-score { font-size: 48px; font-weight: 700; text-align: center; color: var(--blue); text-shadow: 0 0 24px rgba(77,216,245,0.4); margin-bottom: .9rem; }
+  .mixmatch-bar { height: 10px; background: var(--bg3); border-radius: 5px; overflow: hidden; }
+  .mixmatch-fill { height: 100%; border-radius: 5px; transition: width .6s ease, background-color .6s ease; }
+
+  .ozone-subsection { margin-bottom: 1.75rem; }
+  .ozone-subsection:last-child { margin-bottom: 0; }
+  .ozone-subtitle { font-size: 13px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: .9rem; }
+  .eq-chart-wrap { height: 160px; margin-bottom: .75rem; }
+  .eq-chart-wrap canvas { filter: drop-shadow(0 0 8px rgba(77,216,245,0.18)); }
+  .eq-bands { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .eq-band { background: var(--bg3); border-radius: var(--radius); padding: .6rem .5rem; text-align: center; }
+  .eq-band-name { font-size: 11px; color: var(--text3); margin-bottom: 2px; line-height: 1.4; }
+  .eq-band-val { font-size: 16px; font-weight: 500; }
+  .eq-band-action { font-size: 11px; margin-top: 4px; border-radius: 3px; padding: 1px 6px; display: inline-block; }
+  .action-cut   { background: var(--red-bg);   color: var(--red-text); }
+  .action-boost { background: var(--blue-bg);  color: var(--blue-text); }
+  .action-ok    { background: var(--green-bg); color: var(--green-text); }
+  .ozone-text { font-size: 13px; color: var(--text); }
+  .ozone-warning { background: var(--red-bg); color: var(--red-text); border-radius: var(--radius); padding: .6rem .8rem; font-size: 13px; margin-bottom: .75rem; }
+  .gauge-track { height: 8px; background: var(--bg3); border-radius: 4px; position: relative; margin: 1.25rem 0 .5rem; }
+  .gauge-fill { height: 100%; border-radius: 4px; background: var(--blue); opacity: .3; box-shadow: 0 0 12px var(--blue); position: absolute; left: 0; top: 0; }
+  .gauge-marker { position: absolute; top: 50%; width: 14px; height: 14px; border-radius: 50%; transform: translate(-50%, -50%); border: 2px solid var(--bg2); box-shadow: 0 0 10px currentColor; }
+  .gauge-marker.my { background: var(--blue); color: var(--blue); }
+  .gauge-marker.target { background: var(--teal); color: var(--teal); }
+  .gauge-scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); }
+
+  @media (max-width: 600px) { .drop-zone { grid-template-columns: 1fr; } .eq-bands { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Mastering Comparator</h1>
+  <p class="subtitle">Lade zwei Audiodateien (WAV, MP3, FLAC, AAC, M4A, OGG …) hoch und vergleiche deinen Track direkt mit einer Referenz – die Analyse läuft komplett im Browser.</p>
+
+  <div class="drop-zone">
+    <label class="drop-card" id="card-my" ondragover="drag(event,'my')" ondragleave="undrag('my')" ondrop="drop(event,'my')">
+      <div class="icon">&#9654;</div>
+      <h3>Dein Track</h3>
+      <p>Audiodatei hier ablegen oder klicken</p>
+      <input type="file" id="file-my" accept="audio/*,.wav,.mp3,.flac,.aac,.m4a,.ogg,.aiff,.alac,.wma" onchange="loadFile(event,'my')">
+      <div class="file-info" id="info-my" style="display:none"></div>
+      <div class="file-meta" id="meta-my"></div>
+    </label>
+    <label class="drop-card" id="card-ref" ondragover="drag(event,'ref')" ondragleave="undrag('ref')" ondrop="drop(event,'ref')">
+      <div class="icon">&#9670;</div>
+      <h3>Referenztrack</h3>
+      <p>Audiodatei hier ablegen oder klicken</p>
+      <input type="file" id="file-ref" accept="audio/*,.wav,.mp3,.flac,.aac,.m4a,.ogg,.aiff,.alac,.wma" onchange="loadFile(event,'ref')">
+      <div class="file-info" id="info-ref" style="display:none"></div>
+      <div class="file-meta" id="meta-ref"></div>
+    </label>
+  </div>
+
+  <button class="analyze-btn" id="analyze-btn" onclick="analyze()" disabled>
+    <span class="spinner"></span>
+    <span id="analyze-label">Vergleich starten</span>
+  </button>
+  <div class="progress-text" id="progress-text"></div>
+
+  <div class="results" id="results">
+    <div class="track-names" id="track-names"></div>
+
+    <div class="section">
+      <div class="section-title">Mix Match</div>
+      <div class="mixmatch-score" id="mixmatch-score">--%</div>
+      <div class="mixmatch-bar"><div class="mixmatch-fill" id="mixmatch-fill" style="width:0%"></div></div>
+      <p class="ozone-text" id="mixmatch-summary" style="margin-top:1rem"></p>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Lautheit & Dynamik</div>
+      <div class="legend-row">
+        <span><span class="leg-dot" style="background:#4DD8F5"></span>Dein Track</span>
+        <span><span class="leg-dot" style="background:#FF6FA8"></span>Referenz</span>
+      </div>
+      <div class="metrics-grid" id="metrics-loud"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Loudness-Verlauf</div>
+      <div class="legend-row">
+        <span><span class="leg-dot" style="background:#4DD8F5"></span>Dein Track</span>
+        <span><span class="leg-dot" style="background:#FF6FA8"></span>Referenz</span>
+      </div>
+      <div class="chart-wrap" style="height:180px">
+        <canvas id="loudnessChart" role="img" aria-label="Momentane Lautheit beider Tracks über die Zeit">Loudness-Verlauf</canvas>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Stereo</div>
+      <div class="metrics-grid" id="metrics-stereo"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Ozone 11 – Einstellungsvorschläge</div>
+
+      <div class="ozone-subsection">
+        <div class="ozone-subtitle">Equalizer (EQ 8)</div>
+        <div class="legend-row">
+          <span><span class="leg-dot" style="background:#4DD8F5"></span>Dein Track</span>
+          <span><span class="leg-dot" style="background:#FF6FA8"></span>Referenz</span>
+        </div>
+        <div class="chart-wrap eq-chart-wrap">
+          <canvas id="eqChart" role="img" aria-label="Gegenüberstellung der Spektralbalance beider Tracks pro EQ-Band">EQ 8 Gegenüberstellung</canvas>
+        </div>
+        <div class="eq-bands" id="eq-bands"></div>
+      </div>
+
+      <div class="ozone-subsection">
+        <div class="ozone-subtitle">Maximizer / Loudness</div>
+        <div id="maximizer-panel"></div>
+      </div>
+
+      <div class="ozone-subsection">
+        <div class="ozone-subtitle">Extras (Width &amp; Dynamics Match)</div>
+        <div id="extras-panel"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const state = { my: null, ref: null, eqChart: null, loudnessChart: null, audioCtx: null };
+
+// ─── Drag & Drop / File Loading ─────────────────────────────────────────────
+
+function drag(e, side) { e.preventDefault(); document.getElementById('card-'+side).classList.add('dragover'); }
+function undrag(side) { document.getElementById('card-'+side).classList.remove('dragover'); }
+function drop(e, side) { e.preventDefault(); undrag(side); const f = e.dataTransfer.files[0]; if(f) loadAudioFile(f, side); }
+function loadFile(e, side) { const f = e.target.files[0]; if(f) loadAudioFile(f, side); }
+
+function getAudioContext() {
+  if (!state.audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    try {
+      state.audioCtx = new Ctx({ sampleRate: 48000 });
+    } catch (e) {
+      state.audioCtx = new Ctx();
+    }
+  }
+  return state.audioCtx;
+}
+
+function formatDuration(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.round(sec % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+async function loadAudioFile(file, side) {
+  const card = document.getElementById('card-'+side);
+  const info = document.getElementById('info-'+side);
+  const meta = document.getElementById('meta-'+side);
+  info.style.display = 'inline-block';
+  info.textContent = 'Lade & dekodiere…';
+  card.classList.remove('dragover');
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const audioBuffer = await getAudioContext().decodeAudioData(arrayBuffer);
+    state[side] = { buffer: audioBuffer, name: file.name };
+    card.classList.add('loaded');
+    info.textContent = file.name;
+    meta.textContent = `${formatDuration(audioBuffer.duration)} · ${audioBuffer.sampleRate} Hz · ${audioBuffer.numberOfChannels === 1 ? 'Mono' : 'Stereo'}`;
+    checkReady();
+  } catch (err) {
+    info.textContent = 'Fehler beim Dekodieren';
+    card.classList.remove('loaded');
+    state[side] = null;
+    checkReady();
+    alert('Audiodatei konnte nicht dekodiert werden: ' + err.message);
+  }
+}
+
+function checkReady() {
+  document.getElementById('analyze-btn').disabled = !(state.my && state.ref);
+}
+
+// ─── Audio-Analyse (Port von analyze_track.py) ──────────────────────────────
+
+function mean(arr) {
+  let sum = 0;
+  for (let i = 0; i < arr.length; i++) sum += arr[i];
+  return sum / arr.length;
+}
+
+function round2(v) { return Math.round(v * 100) / 100; }
+
+function percentile(sortedArr, p) {
+  const idx = (p / 100) * (sortedArr.length - 1);
+  const lo = Math.floor(idx), hi = Math.ceil(idx);
+  if (lo === hi) return sortedArr[lo];
+  return sortedArr[lo] + (sortedArr[hi] - sortedArr[lo]) * (idx - lo);
+}
+
+// K-Weighting (ITU-R BS.1770-4)
+function designKWeightingFilters(sr) {
+  const sq2 = Math.sqrt(2);
+
+  // Stage 1: High-Shelf (+4 dB @ 1681.97 Hz)
+  const f0 = 1681.974450955533, V0 = 3.999843853973347;
+  const Kf = Math.tan(Math.PI * f0 / sr);
+  const hsDen = 1 + sq2 * Kf + Kf * Kf;
+  const hs = {
+    b: [
+      (V0 + Math.sqrt(2 * V0) * Kf + Kf * Kf) / hsDen,
+      2 * (Kf * Kf - V0) / hsDen,
+      (V0 - Math.sqrt(2 * V0) * Kf + Kf * Kf) / hsDen
+    ],
+    a: [1, 2 * (Kf * Kf - 1) / hsDen, (1 - sq2 * Kf + Kf * Kf) / hsDen]
+  };
+
+  // Stage 2: High-Pass 38.14 Hz (Butterworth 2nd order)
+  const fHp = 38.13547087602444;
+  const Kf2 = Math.tan(Math.PI * fHp / sr);
+  const hpDen = 1 + sq2 * Kf2 + Kf2 * Kf2;
+  const b0h = 1 / hpDen;
+  const hp = {
+    b: [b0h, -2 * b0h, b0h],
+    a: [1, 2 * (Kf2 * Kf2 - 1) / hpDen, (1 - sq2 * Kf2 + Kf2 * Kf2) / hpDen]
+  };
+
+  return { hs, hp };
+}
+
+function biquadFilter(b, a, x) {
+  const y = new Float32Array(x.length);
+  let x1 = 0, x2 = 0, y1 = 0, y2 = 0;
+  for (let i = 0; i < x.length; i++) {
+    const xi = x[i];
+    const yi = b[0] * xi + b[1] * x1 + b[2] * x2 - a[1] * y1 - a[2] * y2;
+    y[i] = yi;
+    x2 = x1; x1 = xi;
+    y2 = y1; y1 = yi;
+  }
+  return y;
+}
+
+function kWeight(channel, filters) {
+  let x = biquadFilter(filters.hs.b, filters.hs.a, channel);
+  x = biquadFilter(filters.hp.b, filters.hp.a, x);
+  return x;
+}
+
+// EBU R128 LUFS, LRA, Short-Term Max
+function computeLufs(L, R, sr) {
+  const filters = designKWeightingFilters(sr);
+  const wL = kWeight(L, filters);
+  const wR = kWeight(R, filters);
+  const n = wL.length;
+
+  // Prefix sums der quadrierten, gewichteten Signale für O(1) Block-Summen
+  const prefixL = new Float64Array(n + 1);
+  const prefixR = new Float64Array(n + 1);
+  for (let i = 0; i < n; i++) {
+    prefixL[i + 1] = prefixL[i] + wL[i] * wL[i];
+    prefixR[i + 1] = prefixR[i] + wR[i] * wR[i];
+  }
+
+  const blockSize = Math.floor(0.4 * sr);  // 400 ms
+  const hop = Math.floor(0.1 * sr);        // 100 ms (75% Overlap)
+  const minBlock = Math.floor(3.0 * sr);   // 3 s für Short-Term
+
+  const blocks = [];
+  for (let start = 0; start + blockSize <= n; start += hop) {
+    const sumSq = (prefixL[start + blockSize] - prefixL[start]) + (prefixR[start + blockSize] - prefixR[start]);
+    blocks.push(-0.691 + 10 * Math.log10(sumSq / blockSize + 1e-10));
+  }
+  if (blocks.length === 0) return [-70.0, 0.0, -70.0, blocks];
+
+  const gatedAbs = blocks.filter(b => b >= -70.0);
+  if (gatedAbs.length === 0) return [-70.0, 0.0, -70.0, blocks];
+
+  const gammaR = mean(gatedAbs.map(b => Math.pow(10, (b + 0.691) / 10)));
+  const gammaRLufs = -0.691 + 10 * Math.log10(gammaR + 1e-10) - 10.0;
+  let gatedRel = gatedAbs.filter(b => b >= gammaRLufs);
+  if (gatedRel.length === 0) gatedRel = gatedAbs;
+
+  const integrated = -0.691 + 10 * Math.log10(mean(gatedRel.map(b => Math.pow(10, (b + 0.691) / 10))) + 1e-10);
+
+  // LRA über 3s-Blöcke
+  const stBlocks = [];
+  for (let start = 0; start + minBlock <= n; start += hop) {
+    const sumSq = (prefixL[start + minBlock] - prefixL[start]) + (prefixR[start + minBlock] - prefixR[start]);
+    stBlocks.push(-0.691 + 10 * Math.log10(sumSq / minBlock + 1e-10));
+  }
+
+  let lra = 0.0, stMax = -70.0;
+  if (stBlocks.length > 0) {
+    const stGated = stBlocks.filter(b => b >= -70.0);
+    if (stGated.length > 1) {
+      const sorted = [...stGated].sort((a, b) => a - b);
+      lra = Math.max(0.0, percentile(sorted, 95) - percentile(sorted, 10));
+    }
+    stMax = stGated.length > 0 ? Math.max(...stGated) : -70.0;
+  }
+
+  return [integrated, lra, stMax, blocks];
+}
+
+// Reduziert eine Reihe von Werten auf maxPoints durch Mittelwertbildung über Chunks
+function downsampleSeries(series, maxPoints=200) {
+  if (series.length <= maxPoints) return series.slice();
+  const out = [];
+  const chunk = series.length / maxPoints;
+  for (let i = 0; i < maxPoints; i++) {
+    const start = Math.floor(i * chunk);
+    const end = Math.max(start + 1, Math.floor((i + 1) * chunk));
+    let sum = 0, count = 0;
+    for (let j = start; j < end && j < series.length; j++) { sum += series[j]; count++; }
+    out.push(count > 0 ? sum / count : -70.0);
+  }
+  return out;
+}
+
+// True Peak via Oversampling (OfflineAudioContext)
+async function computeTruePeak(buffer) {
+  const sr = buffer.sampleRate;
+  const targetSr = Math.min(sr * 4, 192000);
+  const length = Math.ceil(buffer.duration * targetSr);
+  const OfflineCtx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+  const offlineCtx = new OfflineCtx(buffer.numberOfChannels, length, targetSr);
+  const src = offlineCtx.createBufferSource();
+  src.buffer = buffer;
+  src.connect(offlineCtx.destination);
+  src.start();
+  const rendered = await offlineCtx.startRendering();
+
+  let peak = 0;
+  for (let ch = 0; ch < rendered.numberOfChannels; ch++) {
+    const data = rendered.getChannelData(ch);
+    for (let i = 0; i < data.length; i++) {
+      const a = Math.abs(data[i]);
+      if (a > peak) peak = a;
+    }
+  }
+  return 20 * Math.log10(peak + 1e-10);
+}
+
+// Spektrale Balance via Welch-Methode (FFT)
+function hannWindow(n) {
+  const w = new Float64Array(n);
+  for (let i = 0; i < n; i++) w[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (n - 1));
+  return w;
+}
+
+function fft(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      [re[i], re[j]] = [re[j], re[i]];
+      [im[i], im[j]] = [im[j], im[i]];
+    }
+  }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len;
+    const wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let curWr = 1, curWi = 0;
+      for (let j = 0; j < len / 2; j++) {
+        const uRe = re[i + j], uIm = im[i + j];
+        const vRe = re[i + j + len / 2] * curWr - im[i + j + len / 2] * curWi;
+        const vIm = re[i + j + len / 2] * curWi + im[i + j + len / 2] * curWr;
+        re[i + j] = uRe + vRe; im[i + j] = uIm + vIm;
+        re[i + j + len / 2] = uRe - vRe; im[i + j + len / 2] = uIm - vIm;
+        const nWr = curWr * wr - curWi * wi;
+        const nWi = curWr * wi + curWi * wr;
+        curWr = nWr; curWi = nWi;
+      }
+    }
+  }
+}
+
+function computeSpectralBalance(mono, sr) {
+  const nperseg = 4096, hop = 2048;
+  const window = hannWindow(nperseg);
+  let numSegments = Math.floor((mono.length - nperseg) / hop) + 1;
+  if (numSegments < 1) numSegments = 1;
+
+  const half = nperseg / 2 + 1;
+  const psdSum = new Float64Array(half);
+
+  for (let s = 0; s < numSegments; s++) {
+    const start = s * hop;
+    const re = new Float64Array(nperseg), im = new Float64Array(nperseg);
+    for (let i = 0; i < nperseg; i++) {
+      const idx = start + i;
+      re[i] = (idx < mono.length ? mono[idx] : 0) * window[i];
+    }
+    fft(re, im);
+    for (let k = 0; k < half; k++) psdSum[k] += re[k] * re[k] + im[k] * im[k];
+  }
+
+  const freqs = new Float64Array(half);
+  const psdDb = new Float64Array(half);
+  for (let k = 0; k < half; k++) {
+    psdDb[k] = 10 * Math.log10(psdSum[k] / numSegments + 1e-20);
+    freqs[k] = k * sr / nperseg;
+  }
+
+  function bandEnergy(fLow, fHigh) {
+    let sum = 0, count = 0;
+    for (let k = 0; k < half; k++) {
+      if (freqs[k] >= fLow && freqs[k] < fHigh) { sum += psdDb[k]; count++; }
+    }
+    return count > 0 ? sum / count : -60.0;
+  }
+
+  const bands = {
+    sub_bass:  bandEnergy(20, 60),
+    low_bass:  bandEnergy(60, 200),
+    low_mids:  bandEnergy(200, 800),
+    mids:      bandEnergy(800, 2000),
+    high_mids: bandEnergy(2000, 6000),
+    presence:  bandEnergy(3000, 6000),
+    air:       bandEnergy(8000, 16000),
+    ultra_air: bandEnergy(16000, 22000),
+  };
+
+  const ref = bands.low_mids;
+  const absolute = {}, relative = {};
+  for (const k in bands) {
+    absolute[k] = round2(bands[k]);
+    relative[k] = round2(bands[k] - ref);
+  }
+
+  return { absolute, relative };
+}
+
+// Stereobreite / Korrelation
+function computeStereoWidth(L, R) {
+  const n = L.length;
+  let sumL = 0, sumR = 0;
+  for (let i = 0; i < n; i++) { sumL += L[i]; sumR += R[i]; }
+  const meanL = sumL / n, meanR = sumR / n;
+
+  let varL = 0, varR = 0, cov = 0, sumMidSq = 0, sumSideSq = 0;
+  for (let i = 0; i < n; i++) {
+    const dl = L[i] - meanL, dr = R[i] - meanR;
+    varL += dl * dl; varR += dr * dr; cov += dl * dr;
+    const mid = (L[i] + R[i]) / 2, side = (L[i] - R[i]) / 2;
+    sumMidSq += mid * mid; sumSideSq += side * side;
+  }
+  const stdL = Math.sqrt(varL / n), stdR = Math.sqrt(varR / n);
+
+  if (stdL < 1e-8 || stdR < 1e-8) {
+    return { correlation: 1.0, width_score: 0, mid_side_ratio: 0.0 };
+  }
+
+  const corr = (cov / n) / (stdL * stdR);
+  const rmsMid = Math.sqrt(sumMidSq / n);
+  const rmsSide = Math.sqrt(sumSideSq / n);
+  const msRatio = rmsSide / (rmsMid + 1e-10);
+  const widthScore = Math.round(Math.min(100, Math.max(0, (1 - corr) * 70)));
+
+  return {
+    correlation: Math.round(corr * 1000) / 1000,
+    width_score: widthScore,
+    mid_side_ratio: Math.round(msRatio * 1000) / 1000
+  };
+}
+
+// Peak / RMS / Crest Factor
+function computeDynamics(L, R) {
+  const n = L.length;
+  let peak = 0, sumSq = 0;
+  for (let i = 0; i < n; i++) {
+    const al = Math.abs(L[i]), ar = Math.abs(R[i]);
+    if (al > peak) peak = al;
+    if (ar > peak) peak = ar;
+    sumSq += L[i] * L[i] + R[i] * R[i];
+  }
+  const rms = Math.sqrt(sumSq / (n * 2));
+  const peakDb = 20 * Math.log10(peak + 1e-10);
+  const rmsDb = 20 * Math.log10(rms + 1e-10);
+  return {
+    peak_db: round2(peakDb),
+    rms_db: round2(rmsDb),
+    crest_factor: round2(peakDb - rmsDb)
+  };
+}
+
+async function analyzeAudioBuffer(audioBuffer, filename, onProgress) {
+  const sr = audioBuffer.sampleRate;
+  const L = audioBuffer.getChannelData(0);
+  const R = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : audioBuffer.getChannelData(0);
+
+  onProgress('Lautheit (LUFS) …');
+  const [lufs, lra, stMax, momentaryBlocks] = computeLufs(L, R, sr);
+
+  onProgress('True Peak …');
+  const truePeak = await computeTruePeak(audioBuffer);
+
+  onProgress('Spektrum …');
+  const mono = new Float32Array(L.length);
+  for (let i = 0; i < L.length; i++) mono[i] = (L[i] + R[i]) / 2;
+  const spectral = computeSpectralBalance(mono, sr);
+
+  onProgress('Stereobreite …');
+  const stereo = computeStereoWidth(L, R);
+
+  const dynamics = computeDynamics(L, R);
+
+  return {
+    file: filename,
+    duration_s: round2(audioBuffer.duration),
+    sample_rate: sr,
+    channels: audioBuffer.numberOfChannels,
+    loudness: {
+      lufs_integrated: round2(lufs),
+      lra: round2(lra),
+      shortterm_max: round2(stMax),
+      true_peak_dbtp: round2(truePeak),
+      rms_db: dynamics.rms_db,
+      peak_db: dynamics.peak_db,
+      crest_factor_db: dynamics.crest_factor,
+      momentary_series: downsampleSeries(momentaryBlocks.filter(b => b >= -70.0).length > 0 ? momentaryBlocks.map(b => Math.max(b, -70.0)) : [-70.0])
+    },
+    spectral,
+    stereo
+  };
+}
+
+// ─── UI: Anzeige & Rendering ─────────────────────────────────────────────────
+
+function fmt(v, dec=1) { return typeof v === 'number' ? v.toFixed(dec) : '—'; }
+
+function deltaClass(diff, goodIfNeg=false, threshold=0.5) {
+  const abs = Math.abs(diff);
+  if (abs < threshold) return 'delta-ok';
+  if (goodIfNeg) return diff < 0 ? 'delta-ok' : (abs < 2 ? 'delta-warn' : 'delta-bad');
+  return diff > 0 ? 'delta-ok' : (abs < 2 ? 'delta-warn' : 'delta-bad');
+}
+
+function makeMetric(label, myVal, refVal, unit='', goodIfNeg=false, threshold=0.5) {
+  const diff = myVal - refVal;
+  const cls = deltaClass(diff, goodIfNeg, threshold);
+  const sign = diff > 0 ? '+' : '';
+  return `<div class="metric">
+    <div class="metric-label">${label}</div>
+    <div class="metric-values">
+      <span class="metric-val my">${fmt(myVal)}${unit}</span>
+      <span class="metric-sep">/</span>
+      <span class="metric-val ref">${fmt(refVal)}${unit}</span>
+    </div>
+    <span class="metric-delta ${cls}">${sign}${fmt(diff)} ${unit||'Δ'}</span>
+  </div>`;
+}
+
+// Ozone Equalizer "EQ 8" – 8 Bänder, 1:1 aus der Spektralanalyse
+const EQ8_BANDS = [
+  { key: 'sub_bass',  label: 'Band 1', freq: '30 Hz',   type: 'Low Shelf' },
+  { key: 'low_bass',  label: 'Band 2', freq: '100 Hz',  type: 'Bell' },
+  { key: 'low_mids',  label: 'Band 3', freq: '400 Hz',  type: 'Bell' },
+  { key: 'mids',      label: 'Band 4', freq: '1.2 kHz', type: 'Bell' },
+  { key: 'high_mids', label: 'Band 5', freq: '3.5 kHz', type: 'Bell' },
+  { key: 'presence',  label: 'Band 6', freq: '5 kHz',   type: 'Bell' },
+  { key: 'air',       label: 'Band 7', freq: '12 kHz',  type: 'Bell' },
+  { key: 'ultra_air', label: 'Band 8', freq: '18 kHz',  type: 'High Shelf' },
+];
+
+function renderEqSection(my, ref) {
+  const ms = my.spectral, rs = ref.spectral;
+  const labels = EQ8_BANDS.map(b => `${b.label}\n${b.freq}`);
+  const myData  = EQ8_BANDS.map(b => ms.relative[b.key] || 0);
+  const refData = EQ8_BANDS.map(b => rs.relative[b.key] || 0);
+  // EQ-Korrektur, die im Equalizer auf "Dein Track" angewendet werden sollte, um die Referenz-Balance zu erreichen
+  const corrections = EQ8_BANDS.map(b => round2(rs.absolute[b.key] - ms.absolute[b.key]));
+
+  if (state.eqChart) { state.eqChart.destroy(); state.eqChart = null; }
+  const textColor = '#99a5c4';
+  const gridColor = 'rgba(255,255,255,0.06)';
+
+  state.eqChart = new Chart(document.getElementById('eqChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Dein Track', data: myData,  borderColor: '#4DD8F5', backgroundColor: 'rgba(77,216,245,0.12)', fill: false, tension: 0.35, pointRadius: 3, pointBackgroundColor: '#4DD8F5', borderWidth: 2 },
+        { label: 'Referenz',   data: refData, borderColor: '#FF6FA8', backgroundColor: 'rgba(255,111,168,0.12)', fill: false, tension: 0.35, pointRadius: 3, pointBackgroundColor: '#FF6FA8', borderWidth: 2, borderDash: [4,2] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: textColor, font: { size: 11 } }, grid: { color: gridColor } },
+        y: { ticks: { color: textColor, font: { size: 11 }, callback: v => (v > 0 ? '+' : '') + v.toFixed(0) + ' dB' }, grid: { color: gridColor }, title: { display: true, text: 'relativ (dB)', color: textColor, font: { size: 11 } } }
+      }
+    }
+  });
+
+  const bandHtml = EQ8_BANDS.map((b, i) => {
+    const v = corrections[i];
+    let cls = 'action-ok', action = 'passt';
+    if (v > 0.5) { cls = 'action-boost'; action = `Boost +${v.toFixed(1)} dB`; }
+    else if (v < -0.5) { cls = 'action-cut'; action = `Cut ${v.toFixed(1)} dB`; }
+    return `<div class="eq-band">
+      <div class="eq-band-name">${b.label} · ${b.freq}<br>${b.type}</div>
+      <div class="eq-band-val">${fmt(myData[i])} / ${fmt(refData[i])} dB</div>
+      <div class="eq-band-action ${cls}">${action}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('eq-bands').innerHTML = bandHtml;
+}
+
+function renderMaximizerSection(my, ref) {
+  const l = my.loudness, r = ref.loudness;
+  const gainDelta = round2(r.lufs_integrated - l.lufs_integrated); // + = lauter machen
+  const min = -24, max = -4;
+  const pct = v => Math.min(100, Math.max(0, (v - min) / (max - min) * 100));
+
+  let warnings = '';
+  if (l.true_peak_dbtp > -1.0) {
+    warnings += `<div class="ozone-warning">&#9888; True Peak ${fmt(l.true_peak_dbtp)} dBTP zu hoch – im Maximizer "True Peak Ceiling" auf <strong>-1.0 dBTP</strong> setzen.</div>`;
+  }
+
+  let dirText;
+  if (Math.abs(gainDelta) < 0.3) {
+    dirText = `Lautheit passt bereits gut zur Referenz (${fmt(l.lufs_integrated)} vs ${fmt(r.lufs_integrated)} LUFS).`;
+  } else if (gainDelta > 0) {
+    dirText = `Maximizer-<strong>Threshold senken</strong> bzw. Gain um ca. <strong>${fmt(gainDelta)} dB</strong> erhöhen, um von ${fmt(l.lufs_integrated)} auf ${fmt(r.lufs_integrated)} LUFS zu kommen.`;
+  } else {
+    dirText = `Track ist bereits ${fmt(Math.abs(gainDelta))} dB lauter als Referenz – Maximizer-<strong>Threshold anheben</strong> bzw. Gain reduzieren, um Ziel von ${fmt(r.lufs_integrated)} LUFS zu erreichen.`;
+  }
+
+  document.getElementById('maximizer-panel').innerHTML = `
+    ${warnings}
+    <div class="ozone-text">${dirText}</div>
+    <div class="gauge-track">
+      <div class="gauge-fill" style="width:${pct(Math.max(l.lufs_integrated, r.lufs_integrated))}%"></div>
+      <div class="gauge-marker my" style="left:${pct(l.lufs_integrated)}%" title="Dein Track: ${fmt(l.lufs_integrated)} LUFS"></div>
+      <div class="gauge-marker target" style="left:${pct(r.lufs_integrated)}%" title="Referenz: ${fmt(r.lufs_integrated)} LUFS"></div>
+    </div>
+    <div class="gauge-scale"><span>${min} LUFS</span><span>${max} LUFS</span></div>
+  `;
+}
+
+function renderExtrasSection(my, ref) {
+  const widthDiff = my.stereo.width_score - ref.stereo.width_score; // negativ = schmaler
+  const lraDiff = my.loudness.lra - ref.loudness.lra;
+  const widthAmount = Math.min(100, Math.round(Math.abs(widthDiff) * 3));
+  const dynAmount = Math.min(100, Math.round(Math.abs(lraDiff) * 15));
+
+  let phaseWarning = '';
+  if (my.stereo.correlation < 0.5) {
+    phaseWarning = `<div class="ozone-warning">&#9888; Mono-Korrelation ${my.stereo.correlation.toFixed(2)} – mögliches Phasenproblem. Sub-Bass unter 150 Hz im Imager mono lassen.</div>`;
+  }
+
+  const widthText = Math.abs(widthDiff) < 5
+    ? 'Stereobreite liegt nah an der Referenz – Width Match nicht nötig.'
+    : (widthDiff < 0
+        ? `Track ist schmaler als Referenz (${my.stereo.width_score} vs ${ref.stereo.width_score}). <strong>Width Match ≈ ${widthAmount}%</strong> zum Verbreitern.`
+        : `Track ist breiter als Referenz (${my.stereo.width_score} vs ${ref.stereo.width_score}). <strong>Width Match ≈ ${widthAmount}%</strong> zum Verschmälern.`);
+
+  const dynText = Math.abs(lraDiff) < 1
+    ? 'Dynamikbereich liegt nah an der Referenz – Dynamics Match nicht nötig.'
+    : (lraDiff > 0
+        ? `Track ist dynamischer als Referenz (LRA ${fmt(my.loudness.lra)} vs ${fmt(ref.loudness.lra)} LU). <strong>Dynamics Match ≈ ${dynAmount}%</strong> für mehr Verdichtung.`
+        : `Track ist komprimierter als Referenz (LRA ${fmt(my.loudness.lra)} vs ${fmt(ref.loudness.lra)} LU). <strong>Dynamics Match ≈ ${dynAmount}%</strong> für mehr Dynamik.`);
+
+  document.getElementById('extras-panel').innerHTML = `
+    ${phaseWarning}
+    <div class="bar-section">
+      <div class="bar-label-row"><span class="bar-label">Width Match</span><span class="bar-vals">${widthAmount}%</span></div>
+      <div class="gauge-track"><div class="gauge-fill" style="width:${widthAmount}%"></div></div>
+      <div class="ozone-text" style="margin-top:.4rem">${widthText}</div>
+    </div>
+    <div class="bar-section">
+      <div class="bar-label-row"><span class="bar-label">Dynamics Match</span><span class="bar-vals">${dynAmount}%</span></div>
+      <div class="gauge-track"><div class="gauge-fill" style="width:${dynAmount}%"></div></div>
+      <div class="ozone-text" style="margin-top:.4rem">${dynText}</div>
+    </div>
+  `;
+}
+
+// Mix Match: gewichteter Übereinstimmungs-Score (0-100) zwischen den beiden Tracks
+function computeMixMatch(my, ref) {
+  const items = [];
+
+  // EQ8: mittlerer absoluter Fehler über alle 8 Bänder, Toleranz 2 dB
+  let eqErrSum = 0;
+  for (const b of EQ8_BANDS) eqErrSum += Math.abs(my.spectral.relative[b.key] - ref.spectral.relative[b.key]);
+  const eqErr = eqErrSum / EQ8_BANDS.length;
+  items.push({ key: 'eq',    weight: 0.35, diff: eqErr,                                            tol: 2.0 });
+  items.push({ key: 'lufs',  weight: 0.15, diff: my.loudness.lufs_integrated - ref.loudness.lufs_integrated, tol: 1.0 });
+  items.push({ key: 'lra',   weight: 0.10, diff: my.loudness.lra - ref.loudness.lra,               tol: 2.0 });
+  items.push({ key: 'tp',    weight: 0.10, diff: my.loudness.true_peak_dbtp - ref.loudness.true_peak_dbtp, tol: 1.0 });
+  items.push({ key: 'width', weight: 0.15, diff: my.stereo.width_score - ref.stereo.width_score,   tol: 15 });
+  items.push({ key: 'corr',  weight: 0.15, diff: my.stereo.correlation - ref.stereo.correlation,   tol: 0.15 });
+
+  let score = 0;
+  for (const it of items) {
+    const norm = Math.min(1, Math.abs(it.diff) / it.tol);
+    it.matchPct = 1 - norm;
+    score += it.weight * it.matchPct;
+  }
+
+  return { score: Math.round(100 * score), items };
+}
+
+const MIXMATCH_LABELS = {
+  eq:    'der Frequenzbalance (EQ)',
+  lufs:  'der Lautheit',
+  lra:   'dem Dynamikbereich',
+  tp:    'dem True Peak',
+  width: 'der Stereobreite',
+  corr:  'der Stereo-Korrelation'
+};
+
+function buildMixMatchSummary(my, ref, mm) {
+  const worst = [...mm.items].sort((a, b) => a.matchPct - b.matchPct).slice(0, 2).filter(it => it.matchPct < 0.85);
+
+  let quality;
+  if (mm.score >= 90) quality = 'sehr stark';
+  else if (mm.score >= 75) quality = 'gut';
+  else if (mm.score >= 55) quality = 'mäßig';
+  else quality = 'deutlich';
+
+  let sentence = `Dein Track stimmt zu ${mm.score}% mit der Referenz überein – das ist eine ${quality} Übereinstimmung`;
+  if (worst.length === 0) {
+    sentence += '.';
+  } else {
+    const labels = worst.map(it => MIXMATCH_LABELS[it.key]);
+    sentence += `, mit den größten Abweichungen bei ${labels.join(' und ')}.`;
+  }
+  return sentence;
+}
+
+function renderMixMatch(my, ref) {
+  const mm = computeMixMatch(my, ref);
+  document.getElementById('mixmatch-score').textContent = `${mm.score}%`;
+
+  const fill = document.getElementById('mixmatch-fill');
+  fill.style.width = `${mm.score}%`;
+  let color = 'var(--red)';
+  if (mm.score >= 85) color = 'var(--green)';
+  else if (mm.score >= 60) color = 'var(--amber)';
+  fill.style.background = color;
+
+  document.getElementById('mixmatch-summary').textContent = buildMixMatchSummary(my, ref, mm);
+}
+
+// Loudness-Verlauf: momentane Lautheit beider Tracks über die Zeit (% Dauer)
+function renderLoudnessChart(my, ref) {
+  if (state.loudnessChart) { state.loudnessChart.destroy(); state.loudnessChart = null; }
+
+  const mySeries = my.loudness.momentary_series;
+  const refSeries = ref.loudness.momentary_series;
+  const n = Math.max(mySeries.length, refSeries.length);
+  const myData = downsampleSeries(mySeries, n);
+  const refData = downsampleSeries(refSeries, n);
+  const maxDuration = Math.max(my.duration_s, ref.duration_s);
+  const labels = myData.map((_, i) => formatDuration(i / (n - 1 || 1) * maxDuration));
+
+  const textColor = '#99a5c4';
+  const gridColor = 'rgba(255,255,255,0.06)';
+
+  state.loudnessChart = new Chart(document.getElementById('loudnessChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Dein Track', data: myData,  borderColor: '#4DD8F5', backgroundColor: 'rgba(77,216,245,0.08)', fill: false, tension: 0.25, pointRadius: 0, borderWidth: 2 },
+        { label: 'Referenz',   data: refData, borderColor: '#FF6FA8', backgroundColor: 'rgba(255,111,168,0.08)', fill: false, tension: 0.25, pointRadius: 0, borderWidth: 2, borderDash: [4,2] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { color: textColor, font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: textColor, font: { size: 11 }, autoSkip: true, maxRotation: 0 }, grid: { color: gridColor }, title: { display: true, text: 'Trackverlauf (min:sek)', color: textColor, font: { size: 11 } } },
+        y: { ticks: { color: textColor, font: { size: 11 }, callback: v => v.toFixed(0) + ' LUFS' }, grid: { color: gridColor }, title: { display: true, text: 'Lautheit (LUFS)', color: textColor, font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderResults(my, ref) {
+  document.getElementById('track-names').innerHTML = `
+    <span class="track-name tn-my">${my.file}</span>
+    <span style="font-size:12px;color:var(--text3);align-self:center">vs</span>
+    <span class="track-name tn-ref">${ref.file}</span>`;
+
+  const l = my.loudness, r = ref.loudness;
+  document.getElementById('metrics-loud').innerHTML =
+    makeMetric('LUFS integrated', l.lufs_integrated, r.lufs_integrated, '', true, 1) +
+    makeMetric('True Peak', l.true_peak_dbtp, r.true_peak_dbtp, ' dBTP', true, 0.5) +
+    makeMetric('LRA', l.lra, r.lra, ' LU', false, 1) +
+    makeMetric('RMS', l.rms_db, r.rms_db, ' dB', true, 1) +
+    makeMetric('Crest Factor', l.crest_factor_db, r.crest_factor_db, ' dB', false, 1.5);
+
+  document.getElementById('metrics-stereo').innerHTML =
+    makeMetric('Stereobreite', my.stereo.width_score, ref.stereo.width_score, '', false, 8) +
+    makeMetric('Korrelation', my.stereo.correlation, ref.stereo.correlation, '', false, 0.1) +
+    makeMetric('M/S Ratio', my.stereo.mid_side_ratio, ref.stereo.mid_side_ratio, '', false, 0.05);
+
+  renderMixMatch(my, ref);
+  renderLoudnessChart(my, ref);
+  renderEqSection(my, ref);
+  renderMaximizerSection(my, ref);
+  renderExtrasSection(my, ref);
+
+  const results = document.getElementById('results');
+  results.classList.add('show');
+  results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── Hauptablauf ─────────────────────────────────────────────────────────────
+
+async function analyze() {
+  if (!state.my || !state.ref) return;
+
+  const btn = document.getElementById('analyze-btn');
+  const label = document.getElementById('analyze-label');
+  const progress = document.getElementById('progress-text');
+
+  btn.disabled = true;
+  btn.classList.add('loading');
+  label.textContent = 'Analysiere…';
+
+  const setProgress = (side, text) => {
+    progress.textContent = `${side === 'my' ? 'Dein Track' : 'Referenz'}: ${text}`;
+  };
+
+  try {
+    // kurze Pause, damit der Browser den Lade-Zustand rendern kann
+    await new Promise(r => setTimeout(r, 50));
+
+    const myResult  = await analyzeAudioBuffer(state.my.buffer,  state.my.name,  t => setProgress('my', t));
+    const refResult = await analyzeAudioBuffer(state.ref.buffer, state.ref.name, t => setProgress('ref', t));
+
+    progress.textContent = '';
+    renderResults(myResult, refResult);
+  } catch (err) {
+    alert('Fehler bei der Analyse: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('loading');
+    label.textContent = 'Vergleich starten';
+    progress.textContent = '';
+  }
+}
+</script>
+</body>
+</html>
