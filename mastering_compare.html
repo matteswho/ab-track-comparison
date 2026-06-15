@@ -21,6 +21,7 @@
     --radius: 10px; --radius-lg: 16px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; }
   body { font-family: 'Exo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: radial-gradient(circle at 50% -10%, #1b2540 0%, #0b0e16 55%); color: var(--text); font-size: 15px; line-height: 1.6; min-height: 100vh; }
   .app { max-width: 980px; margin: 0 auto; padding: 2rem 1.5rem; }
   h1 { font-family: 'Exo 2', sans-serif; font-size: 46px; font-weight: 700; letter-spacing: .04em; margin-bottom: 4px; }
@@ -33,7 +34,7 @@
   .drop-card.loaded .icon { color: var(--blue); }
   .drop-card h3 { font-size: 14px; font-weight: 500; margin-bottom: 4px; }
   .drop-card p { font-size: 12px; color: var(--text2); }
-  .drop-card .file-info { font-size: 13px; font-weight: 500; color: var(--blue-text); background: var(--blue-bg); padding: 4px 10px; border-radius: var(--radius); display: inline-block; margin-top: .5rem; }
+  .drop-card .file-info { font-size: 13px; font-weight: 500; color: var(--blue-text); background: var(--blue-bg); padding: 4px 10px; border-radius: var(--radius); display: inline-block; margin-top: .5rem; max-width: 100%; overflow-wrap: anywhere; }
   .drop-card .file-meta { font-size: 11px; color: var(--text3); margin-top: 4px; }
   input[type=file] { display: none; }
   .analyze-btn { width: 100%; padding: .85rem; border-radius: 999px; border: 1px solid var(--border2); background: var(--bg2); color: var(--text); font-size: 15px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: background .2s, box-shadow .2s; }
@@ -71,8 +72,8 @@
   .leg-dot { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 4px; vertical-align: middle; }
   .chart-wrap { position: relative; width: 100%; height: 200px; }
   .no-data { text-align: center; padding: 4rem; color: var(--text3); font-size: 14px; }
-  .track-names { display: flex; gap: 16px; margin-bottom: 1rem; font-size: 13px; }
-  .track-name { padding: 4px 10px; border-radius: var(--radius); font-size: 12px; font-weight: 500; }
+  .track-names { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 1rem; font-size: 13px; }
+  .track-name { padding: 4px 10px; border-radius: var(--radius); font-size: 12px; font-weight: 500; max-width: 100%; overflow-wrap: anywhere; }
   .tn-my  { background: var(--blue-bg); color: var(--blue-text); }
   .tn-ref { background: var(--teal-bg); color: var(--teal-text); }
 
@@ -102,7 +103,12 @@
   .gauge-marker.target { background: var(--teal); color: var(--teal); }
   .gauge-scale { display: flex; justify-content: space-between; font-size: 10px; color: var(--text3); }
 
-  @media (max-width: 600px) { .drop-zone { grid-template-columns: 1fr; } .eq-bands { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 600px) {
+    .app { padding: 1.5rem 1rem; }
+    h1 { font-size: 34px; word-break: break-word; }
+    .drop-zone { grid-template-columns: 1fr; }
+    .eq-bands { grid-template-columns: repeat(2, 1fr); }
+  }
 </style>
 </head>
 <body>
